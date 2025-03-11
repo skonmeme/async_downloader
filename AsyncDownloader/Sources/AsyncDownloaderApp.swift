@@ -5,7 +5,7 @@ struct AsyncDownloaderApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(ModelManagement())
+                .environmentObject(ModelManagement.shared)
         }
     }
 }

@@ -7,4 +7,5 @@
 
 struct Defaults {
     static let huggingFaceURL = "https://huggingface.co/skonmeme"
+    static let maximumDownloader = 3
 }
