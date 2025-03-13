@@ -1,7 +1,7 @@
 import SwiftUI
 
 public struct ContentView: View {
-    @EnvironmentObject private var modelState: ModelState
+    @Environment(ModelState.self) private var modelState: ModelState
     @State private var huggingfaceToken: String = ""
     
     public var body: some View {
@@ -47,7 +47,8 @@ public struct ContentView: View {
     
     func startDownloadModel(_ model: LanguageModel) {
         let token = huggingfaceToken.isEmpty ? nil : huggingfaceToken
-        ModelManagement.shared.startDownload(model.id, token: token)
+        ModelManagement().startDownload(model.id, token: token)
+        modelState.progress[model.id] = (3, 10)
     }
     
 }
@@ -55,6 +56,6 @@ public struct ContentView: View {
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
-            .environmentObject(ModelState.shared)
+            .environment(ModelState())
     }
 }

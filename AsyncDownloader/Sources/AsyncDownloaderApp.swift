@@ -2,10 +2,12 @@ import SwiftUI
 
 @main
 struct AsyncDownloaderApp: App {
+    @State private var modelState: ModelState = ModelState.shared
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(ModelState.shared)
+                .environment(modelState)
         }
     }
 }

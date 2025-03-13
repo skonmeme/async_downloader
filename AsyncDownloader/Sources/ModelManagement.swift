@@ -41,13 +41,13 @@ enum DownloadState {
     case done
 }
 
-final class ModelState: ObservableObject {
+@Observable final class ModelState {
     @MainActor
     static let shared = ModelState()
     
-    @Published var models: [LanguageModel] = []
-    @Published var state: [String: DownloadState] = [:]
-    @Published var progress: [String: (Int, Int)] = [:]
+    var models: [LanguageModel] = []
+    var state: [String: DownloadState] = [:]
+    var progress: [String: (Int, Int)] = [:]
 
     init() {
         models.append(LanguageModel(name: "gemma-2-2b-it-vp_v1-q4f16_1-MLC", revision: "2025-01-01"))
@@ -73,6 +73,7 @@ final class ModelState: ObservableObject {
         default: // cancel
             initialize(id)
         }
+        print("ID: \(id), Progress: \(progress)")
     }
     
     func getState(_ id: String) -> (DownloadState, Int, Int) {
@@ -84,8 +85,6 @@ final class ModelState: ObservableObject {
 }
 
 final class ModelManagement {
-    @MainActor
-    static let shared = ModelManagement()
 }
 
 extension ModelManagement {
@@ -94,6 +93,7 @@ extension ModelManagement {
         let triggerChannel = AsyncChannel<[String]>()
         
         Task {
+            print("Start download")
             let monitorChannel = await downloader.trigger(token: token, channel: triggerChannel)
             for await message in monitorChannel {
                 await MainActor.run { ModelState.shared.add(message) }
@@ -101,6 +101,7 @@ extension ModelManagement {
         }
         
         Task {
+            print("Start download config files")
             await downloader.download(paths: Defaults.mlcConfigurationFiles, channel: triggerChannel)
         }
     }
