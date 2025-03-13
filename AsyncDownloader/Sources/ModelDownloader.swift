@@ -8,29 +8,22 @@
 import AsyncAlgorithms
 import Foundation
 
-final actor ModelDownloader {
+final actor ModelDownloader: Sendable {
+    private let id: String
     private let remoteBaseURL: URL
     private let localBaseURL: URL
-
-    private var channels: [String: AsyncChannel<[String]>] = [:]
     
-    init(remoteURL: URL, localURL: URL) {
-        self.remoteBaseURL = remoteURL
-        self.localBaseURL = localURL
+    init(id: String, remoteURL: URL) {
+        self.id = id
+        self.remoteBaseURL = remoteURL.appendingPathComponent("resolve").appendingPathComponent("main")
+        self.localBaseURL = Defaults.documentsURL.appendingPathComponent(id)
     }
 }
 
 extension ModelDownloader {
-    private func getChannel(_ id: String) -> AsyncChannel<[String]> {
-        if channels[id] == nil {
-            channels[id] = AsyncChannel<[String]>()
-        }
-        return channels[id]!
-    }
-}
-
-extension ModelDownloader {
-    private func getRequest(pathComponents: [String], token: String?) -> URLRequest {
+    private nonisolated func getRequest(pathComponents: [String], token: String?) -> URLRequest? {
+        guard pathComponents.count > 0 else { return nil }
+        
         var url = remoteBaseURL
         for path in pathComponents {
             url = url.appendingPathComponent(path)
@@ -45,35 +38,63 @@ extension ModelDownloader {
         return request
     }
     
-    private nonisolated func downloader(pathComponents: [String], token: String?) async throws {
+    private nonisolated func process(pathComponents: [String], token: String?, channel: AsyncChannel<(String, Int, Int)>) async {
+        guard let request = getRequest(pathComponents: pathComponents, token: token) else { return }
         
+        var localURL = localBaseURL
+        for path in pathComponents {
+            localURL = localURL.appendingPathComponent(path)
+        }
+        
+        do {
+            // Download file
+            // To cover huge size of file, do not use data func, but download
+            let (location, response) = try await URLSession.shared.download(for: request)
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+                throw URLError(.badServerResponse)
+            }
+            
+            // Check download cancellation and write file
+            try Task.checkCancellation()
+            
+            try FileManager.default.moveItem(at: location, to: localURL)
+            // send a message of successful download
+            await channel.send((id, 0, 1))
+        } catch {
+            // need to implement
+        }
     }
 }
 
 extension ModelDownloader {
-    func trigger(_ id: String, token: String?) async throws {
-        let channel = getChannel(id)
-        try await withThrowingTaskGroup(of: Void.self) { taskGroup in
-            var index = 0
-            for await targetPath in channel {
-                if targetPath.count > 0 {
-                    if index > Defaults.maximumDownloader {
-                        try await taskGroup.next()
+    func trigger(token: String?, channel triggerChannel: AsyncChannel<[String]>) async -> AsyncChannel<(String, Int, Int)> {
+        let monitorChannel = AsyncChannel<(String, Int, Int)>()
+        Task {
+            await withTaskGroup(of: Void.self) { [weak self] taskGroup in
+                //guard let downloadID = self?.id else { throw AsyncDownloaderError.downloadFailed }
+                var index = 0
+                for await targetPath in triggerChannel {
+                    if targetPath.count > 0 {
+                        if index > Defaults.maximumDownloader {
+                            await taskGroup.next()
+                        }
+                        taskGroup.addTask { [weak self] in
+                            await self?.process(pathComponents: targetPath, token: token, channel: monitorChannel)
+                        }
+                    } else {
+                        triggerChannel.finish()
                     }
-                    taskGroup.addTask {
-                        try await self.downloader(pathComponents: targetPath, token: token)
-                    }
-                } else {
-                    channel.finish()
+                    index += 1
                 }
-                index += 1
-            }
-            
-            for try await _ in taskGroup {
-                
             }
         }
+        return monitorChannel
     }
     
-    
+    func download(paths: [[String]], channel: AsyncChannel<[String]>) async {
+        for path in paths {
+            await channel.send(path)
+        }
+        await channel.send([])
+    }
 }
