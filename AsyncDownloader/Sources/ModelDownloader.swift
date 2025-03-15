@@ -47,6 +47,7 @@ extension ModelDownloader {
         }
         
         do {
+            print("download merong: \(request)")
             // Download file
             // To cover huge size of file, do not use data func, but download
             let (location, response) = try await URLSession.shared.download(for: request)
@@ -61,6 +62,7 @@ extension ModelDownloader {
             // send a message of successful download
             await channel.send((id, 0, 1))
         } catch {
+            print("download failed merong: \(error)")
             // need to implement
         }
     }

@@ -47,8 +47,10 @@ public struct ContentView: View {
     
     func startDownloadModel(_ model: LanguageModel) {
         let token = huggingfaceToken.isEmpty ? nil : huggingfaceToken
-        ModelManagement().startDownload(model.id, token: token)
-        modelState.progress[model.id] = (3, 10)
+        ModelManagement().startDownload(id: model.id, name: model.name, token: token)
+        //modelState.progress[model.id] = (3, 10)
+        print(model.id)
+        ModelState.shared.progress["gemma-2-2b-it-vp_v1-q4f16_1-MLC"] = (10, 40)
     }
     
 }

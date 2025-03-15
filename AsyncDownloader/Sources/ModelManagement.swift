@@ -88,15 +88,21 @@ final class ModelManagement {
 }
 
 extension ModelManagement {
-    func startDownload(_ id: String, token: String?) {
-        let downloader = ModelDownloader(id: id, remoteURL: URL(string: "https://huggingface.co/skonmeme")!)
+    func startDownload(id: String, name: String, token: String?) {
+        guard let remoteURL = URL(string: "https://huggingface.co/skonmeme")?.appendingPathComponent(name) else { return }
+        let downloader = ModelDownloader(id: id, remoteURL: remoteURL)
         let triggerChannel = AsyncChannel<[String]>()
-        
+
         Task {
-            print("Start download")
             let monitorChannel = await downloader.trigger(token: token, channel: triggerChannel)
             for await message in monitorChannel {
-                await MainActor.run { ModelState.shared.add(message) }
+                print("\(message)")
+                await MainActor.run {
+                    print("m100")
+                    //ModelState.shared.progress["gemma-2-2b-it-vp_v1-q4f16_1-MLC"]!.1 = 0
+                    ModelState.shared.progress[id] = (10, 20)
+                    //ModelState.shared.add(message)
+                }
             }
         }
         
