@@ -47,10 +47,8 @@ public struct ContentView: View {
     
     func startDownloadModel(_ model: LanguageModel) {
         let token = huggingfaceToken.isEmpty ? nil : huggingfaceToken
-        ModelManagement().startDownload(model.id, token: token)
-        modelState.progress[model.id] = (3, 10)
-    }
-    
+        ModelState.shared.startDownload(id: model.id, name: model.name, token: token)
+    }    
 }
 
 struct ContentView_Previews: PreviewProvider {

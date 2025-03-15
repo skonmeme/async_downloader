@@ -17,6 +17,22 @@ final actor ModelDownloader: Sendable {
         self.id = id
         self.remoteBaseURL = remoteURL.appendingPathComponent("resolve").appendingPathComponent("main")
         self.localBaseURL = Defaults.documentsURL.appendingPathComponent(id)
+        
+        var isDirectory: ObjCBool = true
+        if FileManager.default.fileExists(atPath: localBaseURL.path(), isDirectory: &isDirectory) {
+            if isDirectory.boolValue {
+                let done = self.localBaseURL.appendingPathComponent(".done")
+                if !FileManager.default.fileExists(atPath: done.path) {
+                    try? FileManager.default.removeItem(at: localBaseURL)
+                    try? FileManager.default.createDirectory(at: localBaseURL, withIntermediateDirectories: true)
+                }
+            } else {
+                try? FileManager.default.removeItem(at: localBaseURL)
+                try? FileManager.default.createDirectory(at: localBaseURL, withIntermediateDirectories: true)
+            }
+        } else {
+            try? FileManager.default.createDirectory(at: localBaseURL, withIntermediateDirectories: true)
+        }
     }
 }
 
@@ -30,8 +46,9 @@ extension ModelDownloader {
         }
         
         var request = URLRequest(url: url)
-        request.httpMethod = "POST"
+        request.httpMethod = "GET"
         if let token = token {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         
@@ -58,9 +75,9 @@ extension ModelDownloader {
             try Task.checkCancellation()
             
             try FileManager.default.moveItem(at: location, to: localURL)
-            // send a message of successful download
             await channel.send((id, 0, 1))
         } catch {
+            print("download failed merong: \(error)")
             // need to implement
         }
     }
@@ -86,6 +103,7 @@ extension ModelDownloader {
                     }
                     index += 1
                 }
+                
             }
         }
         return monitorChannel

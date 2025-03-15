@@ -15,7 +15,7 @@ struct Defaults {
                                      appropriateFor: nil,
                                      create: false)
     }()
-    static let mlcConfigurationFiles = [["mlc-chat-config.json"], ["ndarray.json"]]
+    static let mlcConfigurationFiles = [["mlc-chat-config.json"], ["ndarray-cache.json"]]
 
     static let maximumDownloader = 3
 }
