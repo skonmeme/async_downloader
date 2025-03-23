@@ -32,6 +32,7 @@ struct AsyncDownloaderApp: App {
         WindowGroup {
             ContentView()
                 .environment(modelStates)
+                .environment(DeviceStat())
         }
     }
 }

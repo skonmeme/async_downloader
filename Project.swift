@@ -2,6 +2,12 @@ import ProjectDescription
 
 let project = Project(
     name: "AsyncDownloader",
+    packages: [
+        .remote(
+            url: "https://github.com/ml-explore/mlx-swift-examples/",
+            requirement: .upToNextMajor(from: "2.21.2")
+        )
+    ],
     settings: .settings(
         base: [
             "SWIFT_VERSION": "6.0",
@@ -16,8 +22,11 @@ let project = Project(
         .target(
             name: "AsyncDownloader",
             destinations: .macOS,
+            //destinations: .iOS
             product: .app,
             bundleId: "com.skt.AsyncDownloader",
+            deploymentTargets: .macOS("15.0"),
+            //deploymentTargets: .iOS("18.0"),
             infoPlist: .extendingDefault(
                 with: [
                     "CFBundleVersion": "$(MARKETING_VERSION)",
@@ -28,7 +37,15 @@ let project = Project(
             sources: ["AsyncDownloader/Sources/**"],
             resources: ["AsyncDownloader/Resources/**"],
             dependencies: [
-                .external(name: "AsyncAlgorithms")
+                .external(name: "AsyncAlgorithms"),
+                .external(name: "MLX"),
+                .external(name: "MLXRandom"),
+                .external(name: "MLXNN"),
+                .external(name: "MLXOptimizers"),
+                .external(name: "MLXFFT"),
+                .external(name: "Transformers"),
+                .package(product: "MLXLLM"),
+                .external(name: "MarkdownUI"),
             ]
         ),
         .target(

@@ -5,7 +5,7 @@ import AsyncAlgorithms
 
 fileprivate struct ReadyView: View {
     @Environment(ModelStates.self) private var modelStates
-    @State var model: LanguageModel
+    @State var model: LMConfiguration
     @Binding var huggingfaceToken: String
     @Binding var downloader: ModelDownloader?
     @Binding var channel: AsyncChannel<(Int, String)>?
@@ -15,10 +15,10 @@ fileprivate struct ReadyView: View {
             VStack(alignment: .leading) {
                 Text("\(model.name)")
                 HStack {
-                    Text("\(model.modelType.rawValue.uppercased())")
+                    Text("\(model.platform.rawValue.uppercased())")
                         .padding(5)
                         .font(.caption)
-                        .background(Color.blue)
+                        .background(platformColor())
                         .cornerRadius(10)
                     Text("\(model.revision)")
                         .padding(2)
@@ -44,6 +44,15 @@ fileprivate struct ReadyView: View {
         }
     }
     
+    func platformColor() -> Color {
+        switch model.platform {
+        case .mlx:
+            return Color.red
+        case .mlc:
+            return Color.orange
+        }
+    }
+
     func startDownloadModel() {
         let token = huggingfaceToken.isEmpty ? nil : huggingfaceToken
         Task {
@@ -57,7 +66,7 @@ fileprivate struct ReadyView: View {
 
 fileprivate struct DownloadingView: View {
     @Environment(ModelStates.self) private var modelStates
-    @State var model: LanguageModel
+    @State var model: LMConfiguration
     @Binding var downloader: ModelDownloader?
     @Binding var channel: AsyncChannel<(Int, String)>?
     
@@ -67,10 +76,10 @@ fileprivate struct DownloadingView: View {
             VStack(alignment: .leading) {
                 Text("\(model.name)")
                 HStack {
-                    Text("\(model.modelType.rawValue.uppercased())")
+                    Text("\(model.platform.rawValue.uppercased())")
                         .padding(5)
                         .font(.caption)
-                        .background(Color.blue)
+                        .background(platformColor())
                         .cornerRadius(10)
                     Text("\(model.revision)")
                         .padding(2)
@@ -88,10 +97,19 @@ fileprivate struct DownloadingView: View {
                 .progressViewStyle(.circular)
                 .scaleEffect(0.5)
             })
+            .frame(width: 60)
             .buttonStyle(.borderless)
         }
     }
     
+    func platformColor() -> Color {
+        switch model.platform {
+        case .mlx:
+            return Color.red
+        case .mlc:
+            return Color.orange
+        }
+    }
     func cancelDownload() {
         guard let downloader = downloader, let channel = channel else { return }
         Task {
@@ -102,18 +120,27 @@ fileprivate struct DownloadingView: View {
 
 fileprivate struct DoneView: View {
     @Environment(ModelStates.self) private var modelStates
-    @State var model: LanguageModel
+    @State var model: LMConfiguration
     @State var deleteModelRequested: Bool = false
     
     public var body: some View {
         HStack {
             VStack(alignment: .leading) {
-                Text("\(model.name)")
+                switch model.platform {
+                case .mlc:
+                    Text("\(model.name)")
+                case .mlx:
+                    NavigationLink(destination: { MLXView(lmConfiguration: model)
+                            .environment(DeviceStat())
+                    }) {
+                        Text("\(model.name)")
+                    }
+                }
                 HStack {
-                    Text("\(model.modelType.rawValue.uppercased())")
+                    Text("\(model.platform.rawValue.uppercased())")
                         .padding(5)
                         .font(.caption)
-                        .background(Color.blue)
+                        .background(platformColor())
                         .cornerRadius(10)
                     Text("\(model.revision)")
                         .padding(2)
@@ -130,7 +157,6 @@ fileprivate struct DoneView: View {
                         .foregroundColor(.blue)
             })
             .buttonStyle(.borderless)
-            .border(.red, width: 1)
         }
         .confirmationDialog("Delete the model", isPresented: $deleteModelRequested) {
             Button("Delete", role: .destructive, action: { removeModel() })
@@ -138,6 +164,15 @@ fileprivate struct DoneView: View {
         }
     }
     
+    func platformColor() -> Color {
+        switch model.platform {
+        case .mlx:
+            return Color.red
+        case .mlc:
+            return Color.orange
+        }
+    }
+
     func removeModel() {
         do {
             try FileManager.default.removeItem(at: model.localBaseURL)
@@ -150,6 +185,7 @@ fileprivate struct DoneView: View {
 
 public struct ContentView: View {
     @Environment(ModelStates.self) private var modelStates: ModelStates
+    @Environment(DeviceStat.self) private var deviceStat
     @State private var huggingfaceToken: String = ""
     @State private var modelDownloader: ModelDownloader? = nil
     @State private var triggerChannel: AsyncChannel<(Int, String)>? = nil
@@ -161,22 +197,24 @@ public struct ContentView: View {
                 TextField("token", text: $huggingfaceToken)
             }
             .padding()
-            List {
-                ForEach(modelStates.models) { model in
-                    let state = modelStates.get(model.id)
-                    switch state.state {
-                    case .downloading:
-                        DownloadingView(model: model, downloader: $modelDownloader, channel: $triggerChannel)
-                            .environment(modelStates)
-                    case .done:
-                        DoneView(model: model)
-                            .environment(modelStates)
-                    case .invalid:
-                        ReadyView(model: model, huggingfaceToken: $huggingfaceToken, downloader: $modelDownloader, channel: $triggerChannel)
-                            .environment(modelStates)
-                    default:
-                        ReadyView(model: model, huggingfaceToken: $huggingfaceToken, downloader: $modelDownloader, channel: $triggerChannel)
-                            .environment(modelStates)
+            NavigationView {
+                List {
+                    ForEach(modelStates.models) { model in
+                        let state = modelStates.get(model.id)
+                        switch state.state {
+                        case .downloading:
+                            DownloadingView(model: model, downloader: $modelDownloader, channel: $triggerChannel)
+                                .environment(modelStates)
+                        case .done:
+                            DoneView(model: model)
+                                .environment(modelStates)
+                        case .invalid:
+                            ReadyView(model: model, huggingfaceToken: $huggingfaceToken, downloader: $modelDownloader, channel: $triggerChannel)
+                                .environment(modelStates)
+                        default:
+                            ReadyView(model: model, huggingfaceToken: $huggingfaceToken, downloader: $modelDownloader, channel: $triggerChannel)
+                                .environment(modelStates)
+                        }
                     }
                 }
             }

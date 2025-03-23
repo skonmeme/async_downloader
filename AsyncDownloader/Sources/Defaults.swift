@@ -9,10 +9,16 @@ import Foundation
 
 struct Defaults {
     static let baseModelURL: URL = {
-        try! FileManager.default.url(for: .documentDirectory,
+        //try! FileManager.default.url(for: .documentDirectory,
+        //                             in: .userDomainMask,
+        //                             appropriateFor: nil,
+        //                             create: false)
+        try! FileManager.default.url(for: .applicationSupportDirectory,
                                      in: .userDomainMask,
                                      appropriateFor: nil,
                                      create: false)
+        .appendingPathComponent("AsyncDownloader")
+        .appendingPathComponent("models")
     }()
     static let bundleModelURL = Bundle.main.bundleURL.appendingPathComponent("bundle")
     

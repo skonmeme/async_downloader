@@ -38,7 +38,7 @@ struct ModelState {
     @MainActor
     static let shared = ModelStates()
     
-    var models: [LanguageModel] = []
+    var models: [LMConfiguration] = []
     var state: [String: DownloadState] = [:]
     var progress: [String: UInt64] = [:]
     var total: [String: UInt64] = [:]

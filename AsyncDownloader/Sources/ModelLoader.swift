@@ -40,7 +40,7 @@ extension ModelLoader {
         
         // register models
         for modelParameter in parameters {
-            let model = LanguageModel(parameters: modelParameter)
+            let model = LMConfiguration(parameters: modelParameter)
             await MainActor.run {
                 ModelStates.shared.models.append(model)
                 ModelStates.shared.initialize(model.id)
@@ -133,20 +133,23 @@ extension ModelLoader {
         }
     }
 
-    private func mlxDownload(downloader: ModelDownloader, token: String?) async -> AsyncChannel<(Int, String)>? {
-        return await download(paths: Defaults.mlxConfigurationFiles, downloader: downloader, token: token, initialize: true, finalize: true)
+    private func mlxDownload(components: [String], downloader: ModelDownloader, token: String?) async -> AsyncChannel<(Int, String)>? {
+            // Download configuration files
+        return await download(paths: components, downloader: downloader, token: token, initialize: true, finalize: true)
     }
     
-    func startDownload(model: LanguageModel, token: String?) async -> (ModelDownloader?, AsyncChannel<(Int, String)>?) {
+    func startDownload(model: LMConfiguration, token: String?) async -> (ModelDownloader?, AsyncChannel<(Int, String)>?) {
         guard let remoteURL = model.remoteBaseURL else { return (nil, nil) }
         let downloader = ModelDownloader(id: model.id, localURL: model.localBaseURL, remoteURL: remoteURL)
         var channel: AsyncChannel<(Int, String)>? = nil
         
-        switch model.modelType {
+        switch model.platform {
         case .mlc:
             channel = await mlcDownload(downloader: downloader, token: token)
         case .mlx:
-            channel = await mlxDownload(downloader: downloader, token: token)
+            if let modelParameters = model.modelParameters, let components = modelParameters.components {
+                channel = await mlxDownload(components: components,  downloader: downloader, token: token)
+            }
         }
         
         return (downloader, channel)
