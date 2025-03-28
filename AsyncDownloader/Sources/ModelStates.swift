@@ -30,8 +30,8 @@ enum DownloadState {
 
 struct ModelState {
     var state: DownloadState
-    var progress: UInt64
-    var total: UInt64
+    var progress: Int64
+    var total: Int64
 }
 
 @Observable final class ModelStates {
@@ -40,8 +40,8 @@ struct ModelState {
     
     var models: [LMConfiguration] = []
     var state: [String: DownloadState] = [:]
-    var progress: [String: UInt64] = [:]
-    var total: [String: UInt64] = [:]
+    var progress: [String: Int64] = [:]
+    var total: [String: Int64] = [:]
 }
 
 extension ModelStates {
@@ -56,7 +56,7 @@ extension ModelStates {
     }
     
     // message: (ID, type, value)
-    func send(_ message: (String, Int, UInt64)) {
+    func send(_ message: (String, Int, Int64)) {
         let (id, type, value) = message
         switch type {
         case 0: // progressing

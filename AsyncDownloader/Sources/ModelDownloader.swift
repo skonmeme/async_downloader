@@ -47,7 +47,7 @@ extension ModelDownloader {
         return request
     }
     
-    private nonisolated func process(pathComponent: String, token: String?, channel: AsyncChannel<(String, Int, UInt64)>) async -> Bool {
+    private nonisolated func process(pathComponent: String, token: String?, channel: AsyncChannel<(String, Int, Int64)>) async -> Bool {
         // Check already downloaded
         let targetURL = localBaseURL.appendingPathComponent(pathComponent)
         guard !FileManager.default.fileExists(atPath: targetURL.path) else {
@@ -82,41 +82,64 @@ extension ModelDownloader {
 //
 //            return true
             
-            // 2. bytes
-            // Download a file with asynchronously count
-            let bufferSize = 20 * 1024 * 1024
+// 2. bytes
+//            // Download a file with asynchronously count
+//            let bufferSize = 20 * 1024 * 1024
+//
+//            let (asyncBytes, response) = try await URLSession.shared.bytes(for: request)
+//            await channel.send((id, 1, response.expectedContentLength))
+//
+//            let tempFileURL = FileManager.default.temporaryDirectory
+//                .appendingPathComponent(UUID().uuidString + ".tmp")
+//            FileManager.default.createFile(atPath: tempFileURL.path, contents: nil, attributes: nil)
+//            let fileHandle = try FileHandle(forUpdating: tempFileURL)
+//
+//            var data = Data()
+//            data.reserveCapacity(bufferSize)
+//
+//            // Download file
+//            for try await byte in asyncBytes {
+//                data.append(byte)
+//                if data.count >= bufferSize {
+//                    try fileHandle.write(contentsOf: data)
+//                    await channel.send((id, 0, Int64(bufferSize)))
+//                    data.removeAll(keepingCapacity: true)
+//                }
+//            }
+//            if data.count > 0 {
+//                try fileHandle.write(contentsOf: data)
+//                await channel.send((id, 0, Int64(data.count)))
+//            }
+//            try fileHandle.close()
+//
+//            // Move to targetURL
+//            try FileManager.default.moveItem(at: tempFileURL, to: targetURL)
+//            ASLogger.logger.debug("Downloaded file: \(targetURL)")
+//
+//            return true
             
-            let (asyncBytes, response) = try await URLSession.shared.bytes(for: request)
-            let length = UInt64(response.expectedContentLength)
-            await channel.send((id, 1, length))  // increase total count
-
-            let tempFileURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent(UUID().uuidString + ".tmp")
-            FileManager.default.createFile(atPath: tempFileURL.path, contents: nil, attributes: nil)
-            let fileHandle = try FileHandle(forUpdating: tempFileURL)
+// 3. download with delegate
+            // Change to file size
+            //await channel.send((id, 1, 1))  // increase total count
             
-            var data = Data()
-            data.reserveCapacity(bufferSize)
-
             // Download file
-            for try await byte in asyncBytes {
-                data.append(byte)
-                if data.count >= bufferSize {
-                    try fileHandle.write(contentsOf: data)
-                    await channel.send((id, 0, UInt64(bufferSize)))
-                    data.removeAll(keepingCapacity: true)
-                }
+            // To cover huge size of file, do not use data func, but download
+            //let (location, response) = try await URLSession.shared.download(for: request, delegate: ProgressDelegate(id: id, channel: channel))
+            let (location, response) = try await URLSession.shared.download(for: request, delegate: ProgressObserver(id: id, channel: channel))
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+                throw URLError(.badServerResponse)
             }
-            if data.count > 0 {
-                try fileHandle.write(contentsOf: data)
-                await channel.send((id, 0, UInt64(data.count)))
-            }
-            try fileHandle.close()
-
-            // Move to targetURL
-            try FileManager.default.moveItem(at: tempFileURL, to: targetURL)
+            
+            // Check download cancellation and write file
+            try Task.checkCancellation()
+            
+            // Move to local model directory
+            try FileManager.default.moveItem(at: location, to: targetURL)
             ASLogger.logger.debug("Downloaded file: \(targetURL)")
-
+            
+            // Change to file size
+            //await channel.send((id, 0, 1))
+            
             return true
         } catch {
             print("Failed to download \(pathComponent): \(error)")
@@ -126,9 +149,9 @@ extension ModelDownloader {
 }
 
 extension ModelDownloader {
-    func trigger(initialize: Bool, finalize: Bool, token: String?, channel triggerChannel: AsyncChannel<(Int, String)>) async -> (Task<Void, Never>, AsyncChannel<(String, Int, UInt64)>) {
+    func trigger(initialize: Bool, finalize: Bool, token: String?, channel triggerChannel: AsyncChannel<(Int, String)>) async -> (Task<Void, Never>, AsyncChannel<(String, Int, Int64)>) {
         let id = self.id
-        let monitorChannel = AsyncChannel<(String, Int, UInt64)>()
+        let monitorChannel = AsyncChannel<(String, Int, Int64)>()
 
         if initialize {
             Task {
@@ -211,4 +234,88 @@ extension ModelDownloader {
         await channel.send((-1, ""))
     }
         
+}
+
+final class ProgressDelegate: NSObject, URLSessionTaskDelegate {
+    
+    //nonisolated(unsafe) private var observer: NSKeyValueObservation?
+    
+    private let id: String
+    private let channel: AsyncChannel<(String, Int, Int64)>
+        
+    init(id: String, channel: AsyncChannel<(String, Int, Int64)>) {
+        self.id = id
+        self.channel = channel
+    }
+
+    nonisolated func urlSession(_ session: URLSession, didCreateTask task: URLSessionTask) {
+        Task {
+            await self.channel.send((self.id, 1, task.progress.totalUnitCount))
+        }
+        //observer = task.progress.observe(\.completedUnitCount, options: [.new]) {
+        _ = task.progress.observe(\.completedUnitCount, options: [.new]) {
+            _, count in
+            //guard let url = task.originalRequest?.url else {
+            //    return
+            //}
+            //guard let id = URLComponents(
+            //    url: url,
+            //    resolvingAgainstBaseURL: false
+            //)?.queryItems?.first(where: { $0.name == "id" })?.value else {
+            //    return
+            //}
+            Task {
+                await self.channel.send((self.id, 0, count.newValue ?? 0))
+            }
+        }
+    }
+    
+    //nonisolated func urlSession(_ session: URLSession, task: URLSessionTask, didReceiveInformationalResponse response: HTTPURLResponse) {
+    //    guard response.expectedContentLength > 0 else { return }
+    //    Task {
+    //        print("merong merong")
+    //        await channel.send((id, 1, response.expectedContentLength))
+    //    }
+    //}
+    
+}
+
+final class ProgressObserver: NSObject, URLSessionTaskDelegate {
+  
+    nonisolated(unsafe) var observation: NSKeyValueObservation? = nil
+    nonisolated(unsafe) var downloadedCount: Int64 = 0
+  
+    private let id: String
+    private let channel: AsyncChannel<(String, Int, Int64)>
+    
+    init(id: String, channel: AsyncChannel<(String, Int, Int64)>) {
+        self.id = id
+        self.channel = channel
+    }
+  
+    func urlSession(_ session: URLSession, didCreateTask task: URLSessionTask) {
+        observation = task.progress.observe(\.fractionCompleted, options: [.old, .new]) { progress, change in
+            if let old = change.oldValue, let fraction = change.newValue {
+                // Report file size
+                if old == 0.0 {
+                    Task {
+                        await self.channel.send((self.id, 1, Int64(task.response?.expectedContentLength ?? 0)))
+                    }
+                }
+                
+                // Count downloaded
+                var downloaded: Int64
+                if fraction >= 1.0 {
+                    downloaded = Int64(task.response?.expectedContentLength ?? 0) - self.downloadedCount
+                } else {
+                    downloaded = Int64((fraction - old) * Double(task.response?.expectedContentLength ?? 0))
+                    self.downloadedCount += downloaded
+                }
+                
+                Task {
+                    await self.channel.send((self.id, 0, downloaded))
+                }
+            }
+        }
+    }
 }
