@@ -132,6 +132,7 @@ fileprivate struct DoneView: View {
                 case .mlx:
                     NavigationLink(destination: { MLXView(lmConfiguration: model)
                             .environment(DeviceStat())
+                            .environment(MLXLLMEvaluator.shared)
                     }) {
                         Text("\(model.name)")
                     }

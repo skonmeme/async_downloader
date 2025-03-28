@@ -19,8 +19,7 @@ import Tokenizers
 struct MLXView: View {
     
     @Environment(DeviceStat.self) var deviceStat
-
-    @State private var llm = MLXLLMEvaluator()
+    @Environment(MLXLLMEvaluator.self) var llm
     
     @State private var userPrompt: String = ""
     @State private var systemPrompt: String = ""

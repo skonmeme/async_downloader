@@ -19,6 +19,8 @@ import Tokenizers
 @Observable
 @MainActor
 class MLXLLMEvaluator {
+    
+    static let shared = MLXLLMEvaluator()
 
     var running = false
 
@@ -109,6 +111,7 @@ class MLXLLMEvaluator {
     func shutdown() {
         switch loadState {
         case .loaded:
+            print("Cache cleared")
             MLX.GPU.clearCache()
             loadState = .idle
         case .idle: break
