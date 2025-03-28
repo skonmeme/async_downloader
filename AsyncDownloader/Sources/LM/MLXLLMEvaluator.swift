@@ -109,6 +109,7 @@ class MLXLLMEvaluator {
     func shutdown() {
         switch loadState {
         case .loaded:
+            MLX.GPU.clearCache()
             loadState = .idle
         case .idle: break
         }

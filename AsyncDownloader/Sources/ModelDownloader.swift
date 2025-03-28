@@ -59,26 +59,64 @@ extension ModelDownloader {
         guard let request = getRequest(pathComponent: pathComponent, token: token) else { return false }
                 
         do {
-            // Change to file size
-            await channel.send((id, 1, 1))  // increase total count
-            // Download file
-            // To cover huge size of file, do not use data func, but download
+// 1. download
+//            // Change to file size
+//            await channel.send((id, 1, 1))  // increase total count
+//            // Download file
+//            // To cover huge size of file, do not use data func, but download
+//
+//            let (location, response) = try await URLSession.shared.download(for: request)
+//            guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+//                throw URLError(.badServerResponse)
+//            }
+//
+//            // Check download cancellation and write file
+//            try Task.checkCancellation()
+//
+//            // Move to local model directory
+//            try FileManager.default.moveItem(at: location, to: targetURL)
+//            ASLogger.logger.debug("Downloaded file: \(targetURL)")
+//
+//            // Change to file size
+//            await channel.send((id, 0, 1))
+//
+//            return true
             
-            let (location, response) = try await URLSession.shared.download(for: request)
-            guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-                throw URLError(.badServerResponse)
-            }
+            // 2. bytes
+            // Download a file with asynchronously count
+            let bufferSize = 20 * 1024 * 1024
             
-            // Check download cancellation and write file
-            try Task.checkCancellation()
+            let (asyncBytes, response) = try await URLSession.shared.bytes(for: request)
+            let length = UInt64(response.expectedContentLength)
+            await channel.send((id, 1, length))  // increase total count
 
-            // Move to local model directory
-            try FileManager.default.moveItem(at: location, to: targetURL)
+            let tempFileURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString + ".tmp")
+            FileManager.default.createFile(atPath: tempFileURL.path, contents: nil, attributes: nil)
+            let fileHandle = try FileHandle(forUpdating: tempFileURL)
+            
+            var data = Data()
+            data.reserveCapacity(bufferSize)
+
+            // Download file
+            for try await byte in asyncBytes {
+                data.append(byte)
+                if data.count >= bufferSize {
+                    try fileHandle.write(contentsOf: data)
+                    await channel.send((id, 0, UInt64(bufferSize)))
+                    data.removeAll(keepingCapacity: true)
+                }
+            }
+            if data.count > 0 {
+                try fileHandle.write(contentsOf: data)
+                await channel.send((id, 0, UInt64(data.count)))
+            }
+            try fileHandle.close()
+
+            // Move to targetURL
+            try FileManager.default.moveItem(at: tempFileURL, to: targetURL)
             ASLogger.logger.debug("Downloaded file: \(targetURL)")
 
-            // Change to file size
-            await channel.send((id, 0, 1))
-            
             return true
         } catch {
             print("Failed to download \(pathComponent): \(error)")
