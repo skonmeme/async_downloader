@@ -188,14 +188,27 @@ public struct ContentView: View {
     @Environment(ModelStates.self) private var modelStates: ModelStates
     @Environment(DeviceStat.self) private var deviceStat
     @State private var huggingfaceToken: String = ""
+    @State private var revealedToken: Bool = false
     @State private var modelDownloader: ModelDownloader? = nil
     @State private var triggerChannel: AsyncChannel<(Int, String)>? = nil
     
     public var body: some View {
         VStack {
             VStack(alignment: .leading) {
-                Text("Huggingface token")
-                TextField("token", text: $huggingfaceToken)
+                HStack {
+                    Text("Huggingface token")
+                    Spacer()
+                    Toggle(isOn: $revealedToken, label: {
+                        Text("show token")
+                            .font(.caption)
+                    })
+                    .toggleStyle(.checkbox)
+                }
+                if revealedToken {
+                    TextField("token", text: $huggingfaceToken)
+                } else {
+                    SecureField("token", text: $huggingfaceToken)
+                }
             }
             .padding()
             NavigationView {

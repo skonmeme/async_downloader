@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/johnmai-dev/Jinja",
       "state" : {
-        "revision" : "bbddb92fc51ae420b87300298370fd1dfc308f73",
-        "version" : "1.1.1"
+        "revision" : "31c4dd39bcdc07eaa42a384bdc88ea599022b800",
+        "version" : "1.1.2"
       }
     },
     {
@@ -33,8 +33,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/ml-explore/mlx-swift-examples/",
       "state" : {
-        "revision" : "6ef303b84ec69e2e1e1da68f2059e99ee1dcef4d",
-        "version" : "2.21.2"
+        "branch" : "main",
+        "revision" : "1db9d3a4320fbe8d73c9a2d424b4b27bb081a8d0"
       }
     },
     {
@@ -69,8 +69,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/huggingface/swift-transformers",
       "state" : {
-        "revision" : "be855fac725dbae27264e47a3eb535cc422a4ba8",
-        "version" : "0.1.18"
+        "revision" : "940a4fac109d7d68817b22382de4894a8ea945c3",
+        "version" : "0.1.20"
       }
     }
   ],
