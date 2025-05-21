@@ -46,20 +46,21 @@ let project = Project(
             resources: ["AsyncDownloader/Resources/**"],
             dependencies: [
                 .external(name: "AsyncAlgorithms"),
+                .external(name: "MarkdownUI"),
                 //.external(name: "MLX"),
                 //.external(name: "MLXRandom"),
                 //.external(name: "MLXNN"),
                 //.external(name: "MLXOptimizers"),
                 //.external(name: "MLXFFT"),
                 //.external(name: "Transformers"),
+                //.external(name: "MLXLLM"),
                 .package(product: "MLX"),
                 .package(product: "MLXRandom"),
                 .package(product: "MLXNN"),
                 .package(product: "MLXOptimizers"),
                 .package(product: "MLXFFT"),
-                .package(product: "Transformers"),
                 .package(product: "MLXLLM"),
-                .external(name: "MarkdownUI"),
+                .package(product: "Transformers"),
             ]
         ),
         .target(

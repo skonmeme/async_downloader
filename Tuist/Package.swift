@@ -18,8 +18,8 @@ let package = Package(
         // Add your own dependencies here:
         // .package(url: "https://github.com/Alamofire/Alamofire", from: "5.0.0"),
         // You can read more about dependencies here: https://docs.tuist.io/documentation/tuist/dependencies
+        //.package(url: "https://github.com/ml-explore/mlx-swift-examples", branch: "main"),
         .package(url: "https://github.com/apple/swift-async-algorithms", .upToNextMajor(from: "1.0.0")),
-        //.package(url: "https://github.com/ml-explore/mlx-swift", .upToNextMajor(from: "0.25.2")),
         .package(url: "https://github.com/huggingface/swift-transformers", .upToNextMajor(from: "0.1.17")),
         .package(url: "https://github.com/gonzalezreal/swift-markdown-ui", .upToNextMajor(from: "2.0.2")),
     ]
